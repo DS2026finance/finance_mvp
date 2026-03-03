@@ -104,17 +104,18 @@ if question:
     else:
         # Run SQL
         df = pd.read_sql_query(sql_query, conn)
+        
         # Format percentage columns
         percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
         for col in percentage_cols:
-        df[col] = df[col].map(lambda x: f"{x:.2f}%")
+            df[col] = df[col].map(lambda x: f"{x:.2f}%")
 
         # List columns to format with thousand separators
         num_cols = ['Sales_USD', 'Sales_Local', 'Units', 'Budget_USD']
 
         for col in num_cols:
-        if col in df.columns:
-        df[col] = df[col].map(lambda x: f"{x:,.0f}") 
+            if col in df.columns:
+            df[col] = df[col].map(lambda x: f"{x:,.0f}") 
         
         st.dataframe(df)
 
