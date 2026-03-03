@@ -115,7 +115,7 @@ if question:
 
         for col in num_cols:
             if col in df.columns:
-            df[col] = df[col].map(lambda x: f"{x:,.0f}") 
+                df[col] = df[col].map(lambda x: f"{x:,.0f}") 
         
         st.dataframe(df)
 
