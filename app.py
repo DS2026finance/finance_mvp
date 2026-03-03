@@ -112,11 +112,10 @@ if question:
             df[col] = df[col].map(lambda x: f"{x:.2f}%")
 
         # List columns to format with thousand separators
-        num_cols = ['Sales_USD', 'Sales_Local', 'Units', 'Budget_USD']
+        numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
 
-        for col in num_cols:
-            if col in df.columns:
-                df[col] = df[col].apply(lambda x: "{:,.0f}".format(x) if pd.notnull(x) else "")
+        for col in numeric_cols:
+            df[col] = df[col].apply(lambda x: f"{x:,.0f}" if pd.notnull(x) else "")
         
         st.dataframe(df)
 
