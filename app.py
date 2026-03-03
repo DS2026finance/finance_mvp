@@ -38,11 +38,44 @@ Columns:
 - Budget_USD (float)
 
 Rules:
-- Use SUM(Sales_USD) for revenue
-- Franchise aggregates brands
-- Budget vs Actual comparisons allowed
-- Never invent columns
-- Output SQL only
+- Generate ONLY valid SQLite SQL. No explanations, no markdown, no comments.
+- Always use SELECT statements only. Never use DROP, DELETE, UPDATE, INSERT, or ALTER.
+- Never invent columns. Only use the columns listed in the schema.
+
+Revenue & Measures:
+- Use SUM(Sales_USD) for revenue unless the user explicitly asks for local currency.
+- If the user asks for local currency, use SUM(Sales_Local) and include the Currency column in the result.
+- Display local currency results using the Currency code (e.g., USD, EUR, INR), not generic labels like "currency units".
+- Units should use SUM(Units).
+- Budget comparisons should use SUM(Budget_USD).
+
+Hierarchy Rules:
+- Franchise aggregates all underlying Brands.
+- Region aggregates Clusters and Countries.
+- Always aggregate unless the user explicitly asks for detailed (brand-level or country-level) output.
+
+Time Logic:
+- Use Year and Quarter columns for time filtering.
+- Quarter refers to calendar quarters (Q1–Q4).
+
+Percentage & Growth Logic:
+- If the question asks for growth, change, variance, or percentage:
+  - Calculate as (current - prior) / prior * 100.
+  - Name the output column as Percentage.
+  - Do not return decimals for percentages.
+
+Formatting Rules:
+- Use clear column aliases (e.g., Total_Sales_USD, Percentage).
+- Return one result table only.
+- Use thousand separator
+
+Interpretation Rules:
+- Treat common country abbreviations as equivalent (e.g., US = USA, UK = United Kingdom if present).
+- If the question is ambiguous, make a reasonable assumption and generate the most likely SQL.
+
+Output Rules:
+- Output SQL only.
+- Do not include any explanatory text.
 
 Question:
 {question}
