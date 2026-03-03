@@ -116,8 +116,7 @@ if question:
 
         for col in num_cols:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')  # convert to numeric
-                df[col] = df[col].map(lambda x: f"{x:,.0f}") 
+                df[col] = df[col].apply(lambda x: "{:,.0f}".format(x) if pd.notnull(x) else "")
         
         st.dataframe(df)
 
