@@ -108,6 +108,7 @@ if question:
         # Format percentage columns
         percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
         for col in percentage_cols:
+            df[col] = pd.to_numeric(df[col], errors='coerce') # convert to numeric
             df[col] = df[col].map(lambda x: f"{x:.2f}%")
 
         # List columns to format with thousand separators
@@ -115,6 +116,7 @@ if question:
 
         for col in num_cols:
             if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')  # convert to numeric
                 df[col] = df[col].map(lambda x: f"{x:,.0f}") 
         
         st.dataframe(df)
