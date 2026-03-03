@@ -104,6 +104,10 @@ if question:
     else:
         # Run SQL
         df = pd.read_sql_query(sql_query, conn)
+        # Format percentage columns
+        percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
+        for col in percentage_cols:
+        df[col] = df[col].map(lambda x: f"{x:.2f}%")
         st.dataframe(df)
 
         # Ask OpenAI to explain results
