@@ -127,28 +127,28 @@ if question:
 
         if show_chart:
 
-        import plotly.express as px
+            import plotly.express as px
 
-        # Automatically detect numeric columns
-        numeric_cols_chart = df_chart.select_dtypes(include=['float64', 'int64']).columns
-        categorical_cols_chart = df_chart.select_dtypes(include=['object']).columns
+            # Automatically detect numeric columns
+            numeric_cols_chart = df_chart.select_dtypes(include=['float64', 'int64']).columns
+            categorical_cols_chart = df_chart.select_dtypes(include=['object']).columns
 
-        if len(numeric_cols_chart) >= 1:
+            if len(numeric_cols_chart) >= 1:
 
-            y_col = numeric_cols_chart[0]
+                y_col = numeric_cols_chart[0]
 
-            # If we have a categorical column, use it for X
-            if len(categorical_cols_chart) >= 1:
-                x_col = categorical_cols_chart[0]
-                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                # If we have a categorical column, use it for X
+                if len(categorical_cols_chart) >= 1:
+                    x_col = categorical_cols_chart[0]
+                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                else:
+                    fig = px.line(df_chart, y=y_col, title=f"{y_col} Trend")
+
+                fig.update_layout(yaxis_tickformat=",")
+                st.plotly_chart(fig, use_container_width=True)
+
             else:
-                fig = px.line(df_chart, y=y_col, title=f"{y_col} Trend")
-
-            fig.update_layout(yaxis_tickformat=",")
-            st.plotly_chart(fig, use_container_width=True)
-
-        else:
-            st.info("No numeric data available to visualize.")
+                st.info("No numeric data available to visualize.")
 
         # Ask OpenAI to explain results
         explanation_prompt = f"""
