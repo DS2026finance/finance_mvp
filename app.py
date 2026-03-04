@@ -147,7 +147,7 @@ if question:
 
         # --- WATERFALL for Sales vs Budget ---
         if 'Total_Sales_USD' in df_chart.columns and 'Total_Budget_USD' in df_chart.columns:
-            df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
+            df_chart['Variance'] = df_chart['Total_Sales_USD'] - df_chart['Total_Budget_USD']
 
             x_waterfall = ['Budget'] + df_chart['X_Label'].tolist() + ['Total Sales']
             y_waterfall = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [0]  # last 0, Plotly will calculate total
