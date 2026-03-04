@@ -105,8 +105,6 @@ if question:
         # Run SQL
         df = pd.read_sql_query(sql_query, conn)
         
-        df_chart = dff.copy()
-
         # Format percentage columns
         percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
         for col in percentage_cols:
@@ -120,35 +118,6 @@ if question:
             df[col] = df[col].apply(lambda x: f"{x:,.0f}" if pd.notnull(x) else "")
         
         st.dataframe(df)
-
-        st.subheader("📈 Visualization")
-
-        show_chart = st.toggle("Show Chart")
-
-        if show_chart:
-
-        import plotly.express as px
-
-        # Automatically detect numeric columns
-        numeric_cols_chart = df_chart.select_dtypes(include=['float64', 'int64']).columns
-        categorical_cols_chart = df_chart.select_dtypes(include=['object']).columns
-
-        if len(numeric_cols_chart) >= 1:
-
-            y_col = numeric_cols_chart[0]
-
-            # If we have a categorical column, use it for X
-            if len(categorical_cols_chart) >= 1:
-                x_col = categorical_cols_chart[0]
-                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-            else:
-                fig = px.line(df_chart, y=y_col, title=f"{y_col} Trend")
-
-            fig.update_layout(yaxis_tickformat=",")
-            st.plotly_chart(fig, use_container_width=True)
-
-        else:
-            st.info("No numeric data available to visualize.")
 
         # Ask OpenAI to explain results
         explanation_prompt = f"""
