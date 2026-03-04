@@ -176,6 +176,17 @@ if question:
             else:
                 # fallback to previous chart logic
                 if len(numeric_cols) >= 1 and len(categorical_cols) >= 1:
+                    time_cols = [col for col in df_chart.columns if any(word in col.lower() for word in ["month","quarter","year","date"])]
+
+                    if time_cols:
+                        x_col = time_cols[0]  # Use Month/Quarter/Year as X
+                        # Choose first numeric column that is not X
+                        numeric_cols_filtered = [col for col in numeric_cols if col != x_col]
+                        if numeric_cols_filtered:
+                            y_col = numeric_cols_filtered[0]
+                        else:
+                            y_col = numeric_cols[0]  # fallback
+                else:
                     x_col = categorical_cols[0]
                     y_col = numeric_cols[0]
                     x_lower = x_col.lower()
