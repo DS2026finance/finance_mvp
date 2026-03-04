@@ -156,6 +156,10 @@ if question:
             measures = ['absolute'] + ['relative']*len(df_chart) + ['total']
             texts = [f"${df_chart[budget_col].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart[sales_col].sum():,.0f}"]
 
+            # Compute min and max for Y-axis for better spacing
+            y_min = min(0, min(y_waterfall) * 1.1)  # allow extra space below 0
+            y_max = max(y_waterfall) * 1.1  # add 10% margin above max value
+            
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
                 y=y_waterfall,
@@ -164,7 +168,12 @@ if question:
                 textposition="outside",
                 connector={"line":{"color":"gray"}}
             ))
-            fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
+            fig.update_layout(
+                title="Sales vs Budget Waterfall",
+                yaxis_title="USD",
+                yaxis=dict(range=[y_min, y_max], automargin=True),
+                xaxis=dict(tickangle=-45)  # angle X labels if too long
+            )
             st.plotly_chart(fig, use_container_width=True)
 
             # Stop here so other charts don't override waterfall
