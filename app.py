@@ -106,7 +106,12 @@ if question:
         df = pd.read_sql_query(sql_query, conn)
         
         df_chart = df.copy()
+        for col in df_chart.columns:
+            df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
 
+        numeric_cols_chart = df_chart.select_dtypes(include=['float64', 'int64']).columns
+        categorical_cols_chart = df_chart.select_dtypes(include=['object']).columns
+        
         # Format percentage columns
         percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
         for col in percentage_cols:
