@@ -201,35 +201,6 @@ if question:
                     st.info("No numeric data available to visualize.")
 
 
-
-
-Sort by time for time-based waterfall:
-
-if any(word in x_col.lower() for word in ["month", "quarter", "year"]):
-    df_chart = df_chart.sort_values(by=x_col)
-
-Optional: cumulative waterfall using measure=["relative", ..., "total"] if you want actual cumulative totals.
-
-Now, your app can intelligently do:
-
-Query Type	Chart
-Revenue by Month	Line
-% of Sales by Franchise	Pie / Donut
-Revenue by Country	Bar
-Sales vs Budget / Variance	Waterfall
-
-If you want, I can integrate this waterfall logic into your existing app.py fully, keeping:
-
-Table formatting
-
-Explanation from GPT
-
-Toggle charts
-
-so you’ll have a complete finance conversational BI MVP in Streamlit.
-
-Do you want me to do that next?
-
         # Ask OpenAI to explain results
         explanation_prompt = f"""
 Explain this result in plain business language:
