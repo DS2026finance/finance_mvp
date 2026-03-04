@@ -186,11 +186,11 @@ if question:
                             y_col = numeric_cols_filtered[0]
                         else:
                             y_col = numeric_cols[0]  # fallback
-                else:
-                    x_col = categorical_cols[0]
-                    y_col = numeric_cols[0]
-                    x_lower = x_col.lower()
-                    y_lower = y_col.lower()
+                    else:
+                        x_col = categorical_cols[0]
+                        y_col = numeric_cols[0]
+                        x_lower = x_col.lower()
+                        y_lower = y_col.lower()
 
                     # Sort dataframe first so charts appear chronologically
                     if any(word in x_col.lower() for word in ["month", "quarter", "year", "date"]):
