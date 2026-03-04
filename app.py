@@ -117,7 +117,6 @@ if question:
         st.stop()
 
     df_chart = df.copy()
-
     # Format numeric columns
     numeric_cols = df.select_dtypes(include=['float64','int64']).columns.tolist()
     time_cols = [c for c in numeric_cols if any(w in c.lower() for w in ['year','quarter','month','date'])]
@@ -139,9 +138,9 @@ if question:
             df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
             x_col = 'Year_Quarter'
             df_chart = df_chart.sort_values(by=['Year','Quarter'])
-        elif time_cols:
-            x_col = time_cols[0]
-            df_chart = df_chart.sort_values(by=x_col)
+        elif 'Month' in df_chart.columns:
+            df_chart['X_Label'] = pd.to_datetime(df_chart['Month']).dt.strftime('%Y-%m')
+            df_chart = df_chart.sort_values(by='Month')
         else:
             categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
             x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
@@ -149,12 +148,13 @@ if question:
         # --- WATERFALL for Sales vs Budget ---
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
-            x_labels = df_chart[x_col].tolist()
 
-            y_values = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [df_chart['Sales_USD'].sum()]
-            measures = ["absolute"] + ["relative"]*len(df_chart) + ["total"]
-            texts = [f"${df_chart['Budget_USD'].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart['Sales_USD'].sum():,.0f}"]
-            x_waterfall = ["Budget"] + x_labels + ["Total Sales"]
+            budget_total = df_chart['Budget_USD'].sum()
+            sales_total = df_chart['Sales_USD'].sum()
+            y_values = [budget_total] + df_chart['Variance'].tolist() + [sales_total]
+            measures = ["absolute"] + ["relative"] * len(df_chart) + ["total"]
+            texts = [f"${budget_total:,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${sales_total:,.0f}"]
+            x_labels = ["Budget"] + df_chart['X_Label'].tolist() + ["Total Sales"]
 
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
