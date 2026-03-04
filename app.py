@@ -172,21 +172,22 @@ if question:
             st.plotly_chart(fig, use_container_width=True)
 
         # --- OTHER CHARTS ---
-        y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
-        if not y_candidates:
-            st.info("No numeric data to plot.")
         else:
-            y_col = y_candidates[0]
-            if any(k in y_col.lower() for k in ['percent','share','mix']):
-                fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-            elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
-                fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                fig.update_yaxes(tickformat=",")
+            y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
+            if not y_candidates:
+                st.info("No numeric data to plot.")
             else:
-                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                fig.update_yaxes(tickformat=",")
+                y_col = y_candidates[0]
+                if any(k in y_col.lower() for k in ['percent','share','mix']):
+                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    fig.update_yaxes(tickformat=",")
+                else:
+                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                    fig.update_yaxes(tickformat=",")
 
-            st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
 
     # Explain result
     explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
