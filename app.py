@@ -136,12 +136,14 @@ if question:
         # X-axis: handle Year + Quarter
         if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
             df_chart['X_Label'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
-            df_chart = df_chart.sort_values(by=['Year', 'Quarter'])
-        elif 'Month' in df_chart.columns:
-            df_chart['X_Label'] = pd.to_datetime(df_chart['Month']).dt.strftime('%Y-%m')
-            df_chart = df_chart.sort_values(by='Month')
+            df_chart = df_chart.sort_values(by=['Year','Quarter'])
+        elif 'Year' in df_chart.columns and 'Month' in df_chart.columns:
+            df_chart['X_Label'] = pd.to_datetime(df_chart[['Year','Month']].assign(DAY=1)).dt.strftime('%Y-%m')
+            df_chart = df_chart.sort_values(by=['Year','Month'])
         else:
-            df_chart['X_Label'] = df_chart.index.astype(str)
+            # Use first categorical column if available
+            categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
+            df_chart['X_Label'] = df_chart[categorical_cols[0]] if categorical_cols else df_chart.index.astype(str)
 
         # --- WATERFALL for Sales vs Budget ---
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
@@ -157,7 +159,8 @@ if question:
                 y=y_values,
                 measure=measures,
                 text=texts,
-                textposition="outside"
+                textposition="outside",
+                connector={"line":{"color":"gray"}}
             ))
             fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
             st.plotly_chart(fig, use_container_width=True)
