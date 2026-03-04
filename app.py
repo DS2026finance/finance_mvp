@@ -148,36 +148,13 @@ if question:
 
         # Waterfall logic for Sales vs Budget
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
-            # Compute Variance per row
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
-    
-            # X-axis labels = categorical/time column values
             x_labels = df_chart[x_col].tolist()
-    
-            # Prepare waterfall y values and measure
-            y_values = []
-            measures = []
-            texts = []
 
-            # Start with Budget total
-            total_budget = df_chart['Budget_USD'].sum()
-            y_values.append(total_budget)
-            measures.append("absolute")
-            texts.append(f"${total_budget:,.0f}")
-
-            # Add each variance as relative
-            for var in df_chart['Variance']:
-                y_values.append(var)
-                measures.append("relative")
-                texts.append(f"${var:,.0f}")
-
-            # Add total Sales at the end
-            total_sales = df_chart['Sales_USD'].sum()
-            y_values.append(total_sales)
-            measures.append("total")
-            texts.append(f"${total_sales:,.0f}")
-
-            # X labels for waterfall
+            # Build waterfall values
+            y_values = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [df_chart['Sales_USD'].sum()]
+            measures = ["absolute"] + ["relative"] * len(df_chart) + ["total"]
+            texts = [f"${df_chart['Budget_USD'].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart['Sales_USD'].sum():,.0f}"]
             x_waterfall = ["Budget"] + x_labels + ["Total Sales"]
 
             fig = go.Figure(go.Waterfall(
@@ -190,23 +167,25 @@ if question:
             fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
             st.plotly_chart(fig, use_container_width=True)
 
-        else:
-            # Pie for percentage/mix
-            y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
-            if not y_candidates:
-                st.info("No numeric data to plot.")
-            else:
-                y_col = y_candidates[0]
-                if any(word in y_col.lower() for word in ['percent','share','mix']):
-                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                elif any(word in x_col.lower() for word in ['year','quarter','month','date']):
-                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                    fig.update_yaxes(tickformat=",")
-                else:
-                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                    fig.update_yaxes(tickformat=",")
+            # STOP here! Do not run line/bar/pie below
+            st.stop()
 
-                st.plotly_chart(fig, use_container_width=True)
+        # Pie for percentage/mix
+        y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
+        if not y_candidates:
+            st.info("No numeric data to plot.")
+        else:
+            y_col = y_candidates[0]
+            if any(k in y_col.lower() for k in ['percent','share','mix']):
+                fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+            elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
+                fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                fig.update_yaxes(tickformat=",")
+            else:
+                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                fig.update_yaxes(tickformat=",")
+
+            st.plotly_chart(fig, use_container_width=True)
     # Ask OpenAI for plain language explanation
     explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
     explanation = client.chat.completions.create(
