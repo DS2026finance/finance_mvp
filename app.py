@@ -178,19 +178,18 @@ if question:
                 if len(numeric_cols) >= 1 and len(categorical_cols) >= 1:
                     x_col = categorical_cols[0]
                     y_col = numeric_cols[0]
+                    x_lower = x_col.lower()
+                    y_lower = y_col.lower()
 
                     # Sort dataframe first so charts appear chronologically
                     if any(word in x_col.lower() for word in ["month", "quarter", "year", "date"]):
                         df_chart = df_chart.sort_values(by=x_col)
-                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                        fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
 
                     elif any(word in y_lower for word in ["percent", "share", "mix"]):
                         fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
                     else:
                         fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-
-                    x_lower = x_col.lower()
-                    y_lower = y_col.lower()
 
                     # Y-Axis formating
                     fig.update_yaxes(tickprefix="$", tickformat=",")
