@@ -131,11 +131,18 @@ if question:
     show_chart = st.toggle("Show Chart")
 
     if show_chart:
+        # Convert numeric columns
+        for col in df_chart.columns:
+            df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
+
         # Handle X-axis: Year + Quarter
         if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
             df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
             x_col = 'Year_Quarter'
             df_chart = df_chart.sort_values(by=['Year','Quarter'])
+        elif 'Month' in df_chart.columns:
+            df_chart['Month'] = df_chart['Month'].astype(str)
+            x_col = 'Month'
         else:
             categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
             x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
@@ -144,7 +151,7 @@ if question:
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
 
-            x_labels = df_chart[x_col].tolist()
+            x_labels = df_chart[x_col].astype(str).tolist()
             y_values = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [df_chart['Sales_USD'].sum()]
             measures = ['absolute'] + ['relative']*len(df_chart) + ['total']
             texts = [f"${df_chart['Budget_USD'].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart['Sales_USD'].sum():,.0f}"]
@@ -163,23 +170,24 @@ if question:
             fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
             st.plotly_chart(fig, use_container_width=True)
 
-            st.stop()
-
-        y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
-        if not y_candidates:
-            st.info("No numeric data to plot.")
+            #st.stop()
         else:
-            y_col = y_candidates[0]
-            if any(k in y_col.lower() for k in ['percent','share','mix']):
-                fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-            elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
-                fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                fig.update_yaxes(tickformat=",")
-            else:
-                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                fig.update_yaxes(tickformat=",")
 
-            st.plotly_chart(fig, use_container_width=True)
+            y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
+            if not y_candidates:
+                st.info("No numeric data to plot.")
+            else:
+                y_col = y_candidates[0]
+                if any(k in y_col.lower() for k in ['percent','share','mix']):
+                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    fig.update_yaxes(tickformat=",")
+                else:
+                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                    fig.update_yaxes(tickformat=",")
+
+                st.plotly_chart(fig, use_container_width=True)
 
     # Explain result
     explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
