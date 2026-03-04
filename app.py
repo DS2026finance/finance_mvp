@@ -113,10 +113,13 @@ if question:
     # Execute SQL safely
     try:
         df = pd.read_sql_query(sql_query, conn)
-    except Exception as e:
+    except:
         st.info("I don't understand the question. Please rephrase.")
         st.stop()
 
+    if df.empty:
+        st.info("Query returned no data.")
+        st.stop()
         
     df_chart = df.copy()
         
@@ -148,24 +151,28 @@ if question:
 
         numeric_cols_chart = df_chart.select_dtypes(include=['float64','int64']).columns.tolist()
         categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
-        time_cols_chart = [c for c in numeric_cols_chart if any(word in c.lower() for word in ["year","quarter","month","date"])]
 
         # Handle Year + Quarter combined
         if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
             df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
             x_col = 'Year_Quarter'
             df_chart = df_chart.sort_values(by=['Year','Quarter'])
+        elif time_cols:
+            x_col = time_cols[0]
+            df_chart = df_chart.sort_values(by=x_col)
+        elif categorical_cols:
+            x_col = categorical_cols[0]
         else:
-            x_col = time_cols_chart[0] if time_cols_chart else (categorical_cols[0] if categorical_cols else df_chart.columns[0])
+            x_col = df_chart.columns[0]
 
         # Pick Y column (exclude Year/Quarter)
         y_col_candidates = [col for col in numeric_cols_chart if col not in ['Year','Quarter']]
-        y_col = y_col_candidates[0] if y_col_candidates else None
-
-        if not y_col:
+        if not y_candidates:
             st.info("No numeric data available to visualize.")
         else:
-            # Detect Sales vs Budget for waterfall
+            y_col = y_candidates[0]
+
+            # --- Waterfall if Sales vs Budget present ---
             if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
                 df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
                 fig = go.Figure(go.Waterfall(
@@ -176,33 +183,33 @@ if question:
                     text=df_chart['Variance'].apply(lambda x: f"${x:,.0f}"),
                     textposition='outside'
                 ))
-                fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD", xaxis_title=x_col)
+                fig.update_layout(title='Sales vs Budget Waterfall', yaxis_title='USD', xaxis_title=x_col)
                 st.plotly_chart(fig, use_container_width=True)
-            # Pie chart for percentages
-            elif any(word in y_col.lower() for word in ["percent","share","mix"]):
+
+            # --- Pie chart for percentages ---
+            elif any(word in y_col.lower() for word in ['percent','share','mix']):
                 fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
                 st.plotly_chart(fig, use_container_width=True)
-            # Line chart for time-series
-            elif any(word in x_col.lower() for word in ["year","quarter","month","date"]):
+
+            # --- Line chart for time series ---
+            elif any(word in x_col.lower() for word in ['year','quarter','month','date']):
                 fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
                 fig.update_yaxes(tickformat=",")
                 st.plotly_chart(fig, use_container_width=True)
-            # Bar chart for other categorical-numeric
+
+            # --- Bar chart for categorical comparisons ---
             else:
                 fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
                 fig.update_yaxes(tickformat=",")
                 st.plotly_chart(fig, use_container_width=True)
+    # Ask OpenAI to explain results
+    explanation_prompt = f"Explain this result in plain business language:\n{df.to_string(index=False)}"
+    explanation = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[{"role":"user","content":explanation_prompt}]
+    )
 
-        # Ask OpenAI to explain results
-        explanation_prompt = f"""
-Explain this result in plain business language:
-
-{df.to_string(index=False)}
-"""
-        explanation = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": explanation_prompt}]
-        )
-
+    st.subheader("Explanation")
+    st.write(explanation.choices[0].message.content)
         st.subheader("Explanation")
         st.write(explanation.choices[0].message.content)
