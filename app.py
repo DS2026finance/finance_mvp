@@ -105,7 +105,7 @@ if question:
         # Run SQL
         df = pd.read_sql_query(sql_query, conn)
         
-        df_chart = dff.copy()
+        df_chart = df.copy()
 
         # Format percentage columns
         percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
