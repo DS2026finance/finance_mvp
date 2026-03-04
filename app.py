@@ -118,100 +118,100 @@ if question:
         st.stop()
 
         
-        df_chart = df.copy()
+    df_chart = df.copy()
         
-        # Format numeric columns (thousand separator), excluding Year/Quarter/Month
-        numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-        time_cols = [col for col in numeric_cols if any(word in col.lower() for word in ["year","quarter","month","date"])]
-        format_cols = [col for col in numeric_cols if col not in time_cols]
+    # Format numeric columns (thousand separator), excluding Year/Quarter/Month
+    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    time_cols = [col for col in numeric_cols if any(word in col.lower() for word in ["year","quarter","month","date"])]
+    format_cols = [col for col in numeric_cols if col not in time_cols]
 
-        for col in format_cols:
-            df[col] = df[col].apply(lambda x: f"{x:,.0f}" if pd.notnull(x) else "")
+    for col in format_cols:
+        df[col] = df[col].apply(lambda x: f"{x:,.0f}" if pd.notnull(x) else "")
         
-        # Format percentage columns
-        percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
-        for col in percentage_cols:
-            df[col] = pd.to_numeric(df[col], errors='coerce') # convert to numeric
-            df[col] = df[col].map(lambda x: f"{x:.2f}%" if pd.notnull(x) else "")
+    # Format percentage columns
+    percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
+    for col in percentage_cols:
+        df[col] = pd.to_numeric(df[col], errors='coerce') # convert to numeric
+        df[col] = df[col].map(lambda x: f"{x:.2f}%" if pd.notnull(x) else "")
         
-        st.dataframe(df)
+    st.dataframe(df)
 
-        st.subheader("📈 Visualization")
+    st.subheader("📈 Visualization")
 
-        show_chart = st.toggle("Show Chart")
+    show_chart = st.toggle("Show Chart")
 
-        if show_chart:
+    if show_chart:
 
-            # Convert numeric columns
-            for col in df_chart.columns:
-                df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
+        # Convert numeric columns
+        for col in df_chart.columns:
+            df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
 
-            # Detect columns
-            sales_col = next((col for col in df_chart.columns if "sales" in col.lower() and "budget" not in col.lower()), None)
-            budget_col = next((col for col in df_chart.columns if "budget" in col.lower()), None)
+        # Detect columns
+        sales_col = next((col for col in df_chart.columns if "sales" in col.lower() and "budget" not in col.lower()), None)
+        budget_col = next((col for col in df_chart.columns if "budget" in col.lower()), None)
 
-            # Use first categorical column as X if needed
-            categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
-            numeric_cols_chart = df_chart.select_dtypes(include=['float64','int64']).columns.tolist()
-            time_cols_chart = [c for c in numeric_cols_chart if any(word in c.lower() for word in ["year","quarter","month","date"])]
+        # Use first categorical column as X if needed
+        categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
+        numeric_cols_chart = df_chart.select_dtypes(include=['float64','int64']).columns.tolist()
+        time_cols_chart = [c for c in numeric_cols_chart if any(word in c.lower() for word in ["year","quarter","month","date"])]
             
-            if sales_col and budget_col:
-                # Determine X-axis (prefer categorical)
-                if categorical_cols:
-                    x_col = categorical_cols[0]
-                elif time_cols_chart:
-                    x_col = time_cols_chart[0]
-                else:
-                    x_col = df_chart.columns[0]
+        if sales_col and budget_col:
+            # Determine X-axis (prefer categorical)
+            if categorical_cols:
+                x_col = categorical_cols[0]
+            elif time_cols_chart:
+                x_col = time_cols_chart[0]
+            else:
+                x_col = df_chart.columns[0]
                 
-                df_chart["Variance"] = df_chart[sales_col] - df_chart[budget_col]
+            df_chart["Variance"] = df_chart[sales_col] - df_chart[budget_col]
                 
-                # Sort by Year & Quarter if present
-                sort_cols = [col for col in ["Year","Quarter"] if col in df_chart.columns]
-                if sort_cols:
-                    df_chart = df_chart.sort_values(by=sort_cols)
+            # Sort by Year & Quarter if present
+            sort_cols = [col for col in ["Year","Quarter"] if col in df_chart.columns]
+            if sort_cols:
+                df_chart = df_chart.sort_values(by=sort_cols)
                 
-                fig = go.Figure(go.Waterfall(
-                    name = "Variance",
-                    x = df_chart[x_col],
-                    y = df_chart["Variance"],
-                    measure = ["relative"]*len(df_chart),
-                    text = df_chart["Variance"].apply(lambda x: f"${x:,.0f}"),
-                    textposition = "outside"
-                ))
+            fig = go.Figure(go.Waterfall(
+                name = "Variance",
+                x = df_chart[x_col],
+                y = df_chart["Variance"],
+                measure = ["relative"]*len(df_chart),
+                text = df_chart["Variance"].apply(lambda x: f"${x:,.0f}"),
+                textposition = "outside"
+            ))
 
-                fig.update_layout(title=f"{sales_col} vs {budget_col} Waterfall", yaxis_title="USD", xaxis_title=x_col)
+            fig.update_layout(title=f"{sales_col} vs {budget_col} Waterfall", yaxis_title="USD", xaxis_title=x_col)
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif numeric_cols_chart:
+            # Handle Year + Quarter combined X-axis
+            if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
+                df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
+                x_col = 'Year_Quarter'
+                df_chart = df_chart.sort_values(by=['Year', 'Quarter'])
+            elif time_cols_chart:
+                x_col = time_cols_chart[0]
+                df_chart = df_chart.sort_values(by=x_col)
+            else:
+                x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
+
+            # Pick Y column (exclude Year/Quarter)
+            y_col_candidates = [col for col in numeric_cols if col not in ['Year','Quarter']]
+            if not y_candidates:
+                st.info("No numeric data available to visualize.")
+
+                if any(word in y_lower for word in ["percent", "share", "mix"]):
+                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                elif x_col in df_chart.columns and any(word in x_col.lower() for word in ["year","quarter","month","date"]):
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                else:
+                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                    
+                fig.update_yaxes(tickformat=",")
                 st.plotly_chart(fig, use_container_width=True)
 
-            elif numeric_cols_chart:
-                # Handle Year + Quarter combined X-axis
-                if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
-                    df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
-                    x_col = 'Year_Quarter'
-                    df_chart = df_chart.sort_values(by=['Year', 'Quarter'])
-                elif time_cols_chart:
-                    x_col = time_cols_chart[0]
-                    df_chart = df_chart.sort_values(by=x_col)
-                else:
-                    x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
-
-                # Pick Y column (exclude Year/Quarter)
-                y_col_candidates = [col for col in numeric_cols if col not in ['Year','Quarter']]
-                if not y_candidates:
-                    st.info("No numeric data available to visualize.")
-
-                    if any(word in y_lower for word in ["percent", "share", "mix"]):
-                        fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                    elif x_col in df_chart.columns and any(word in x_col.lower() for word in ["year","quarter","month","date"]):
-                        fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                    else:
-                        fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                    
-                    fig.update_yaxes(tickformat=",")
-                    st.plotly_chart(fig, use_container_width=True)
-
-            else:
-                st.info("No numeric data available to visualize.")
+        else:
+            st.info("No numeric data available to visualize.")
 
         # Ask OpenAI to explain results
         explanation_prompt = f"""
