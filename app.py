@@ -190,15 +190,15 @@ if question:
             df_chart[x_col_plot] = df_chart[x_col_plot].astype(str)
 
             # Decide chart type
-            if any(word in y_col.lower() for word in ['percent','share','mix']):
-                fig = px.pie(df_chart, names=x_col_plot, values=y_col, hole=0.4, title=f"{y_col} by {x_col_plot}")
-            elif any(word in x_col_plot.lower() for word in ['year','quarter','month','date']):
+            time_keywords = ['year', 'quarter', 'month', 'date']
+            if any(k in x_col_plot.lower() for k in time_keywords):
                 fig = px.line(df_chart, x=x_col_plot, y=y_col, markers=True, title=f"{y_col} over {x_col_plot}")
                 fig.update_yaxes(tickformat=",")
+            elif any(word in y_col.lower() for word in ['percent','share','mix']):
+                fig = px.pie(df_chart, names=x_col_plot, values=y_col, hole=0.4, title=f"{y_col} by {x_col_plot}")
             else:
                 fig = px.bar(df_chart, x=x_col_plot, y=y_col, title=f"{y_col} by {x_col_plot}")
                 fig.update_yaxes(tickformat=",")
-
             st.plotly_chart(fig, use_container_width=True)
     # Explain result
     explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
