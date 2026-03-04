@@ -175,22 +175,19 @@ if question:
             st.plotly_chart(fig, use_container_width=True)
 
         # --- OTHER CHARTS ---
-        y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter','Month']]
+        y_candidates = [c for c in df_chart.select_dtypes(include=['float64','int64']).columns if c not in ['Year','Quarter','Month']]
         if y_candidates:
             y_col = y_candidates[0]
 
-            # Convert x-axis to string if needed
-            x_col = str(x_col) if not isinstance(x_col, str) else x_col
-
-            # Time-based X-axis formatting
-            if 'Month' in df_chart.columns:
-                df_chart['X_Label'] = pd.to_datetime(df_chart['Month'], format='%m').dt.strftime('%Y-%m') if 'Year' in df_chart.columns else df_chart['Month'].astype(str).str.zfill(2)
-                x_col_plot = 'X_Label'
-            elif 'Quarter' in df_chart.columns and 'Year' in df_chart.columns:
-                df_chart['X_Label'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
+            # Ensure x-axis exists
+            if 'X_Label' in df_chart.columns:
                 x_col_plot = 'X_Label'
             else:
-                x_col_plot = x_col  # fallback to category
+                categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
+                x_col_plot = categorical_cols[0] if categorical_cols else df_chart.index
+
+            # Ensure x_col_plot is string for plotting
+            df_chart[x_col_plot] = df_chart[x_col_plot].astype(str)
 
             # Decide chart type
             if any(word in y_col.lower() for word in ['percent','share','mix']):
