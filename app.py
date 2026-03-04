@@ -171,9 +171,6 @@ if question:
             fig.update_yaxes(tickprefix="$", tickformat=",")  # show full USD amounts
             st.plotly_chart(fig, use_container_width=True)
 
-            # Stop here so other charts don't override waterfall
-            st.stop()
-
         # --- OTHER CHARTS ---
         y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
         if not y_candidates:
