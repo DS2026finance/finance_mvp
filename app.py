@@ -104,6 +104,8 @@ if question:
     else:
         # Run SQL
         df = pd.read_sql_query(sql_query, conn)
+        st.write("DEBUG: Columns in dataframe")
+        st.write(df.columns.tolist())
         
         df_chart = df.copy()
         
