@@ -135,15 +135,14 @@ if question:
 
         # X-axis: handle Year + Quarter
         if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
-            df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
-            x_col = 'Year_Quarter'
-            df_chart = df_chart.sort_values(by=['Year','Quarter'])
+            df_chart['X_Label'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
+            df_chart = df_chart.sort_values(by=['Year', 'Quarter'])
         elif 'Month' in df_chart.columns:
             df_chart['X_Label'] = pd.to_datetime(df_chart['Month']).dt.strftime('%Y-%m')
             df_chart = df_chart.sort_values(by='Month')
         else:
             categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
-            x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
+            df_chart['X_Label'] = df_chart[categorical_cols[0]] if categorical_cols else df_chart.index.astype(str)
 
         # --- WATERFALL for Sales vs Budget ---
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
