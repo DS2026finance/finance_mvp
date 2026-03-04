@@ -158,7 +158,7 @@ if question:
 
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
-                y=y_values,
+                y=y_waterfall,
                 measure=measures,
                 text=texts,
                 textposition="outside",
