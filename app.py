@@ -211,5 +211,5 @@ if question:
 
     st.subheader("Explanation")
     st.write(explanation.choices[0].message.content)
-        st.subheader("Explanation")
-        st.write(explanation.choices[0].message.content)
+    st.subheader("Explanation")
+    st.write(explanation.choices[0].message.content)
