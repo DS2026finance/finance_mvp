@@ -147,12 +147,14 @@ if question:
 
         # --- WATERFALL for Sales vs Budget ---
         if 'Total_Sales_USD' in df_chart.columns and 'Total_Budget_USD' in df_chart.columns:
-            df_chart['Variance'] = df_chart['Total_Sales_USD'] - df_chart['Total_Budget_USD']
+            sales_col = 'Total_Sales_USD'
+            budget_col = 'Total_Budget_USD'
+            df_chart['Variance'] = df_chart[sales_col] - df_chart[budget_col]
 
             x_waterfall = ['Budget'] + df_chart['X_Label'].tolist() + ['Total Sales']
-            y_waterfall = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [0]  # last 0, Plotly will calculate total
+            y_waterfall = [df_chart[budget_col].sum()] + df_chart['Variance'].tolist() + [0]  # last 0, Plotly will calculate total
             measures = ['absolute'] + ['relative']*len(df_chart) + ['total']
-            texts = [f"${df_chart['Budget_USD'].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart['Sales_USD'].sum():,.0f}"]
+            texts = [f"${df_chart[budget_col].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart[sales_col].sum():,.0f}"]
 
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
