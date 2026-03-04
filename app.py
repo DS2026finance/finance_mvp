@@ -106,11 +106,6 @@ if question:
         df = pd.read_sql_query(sql_query, conn)
         
         df_chart = df.copy()
-        for col in df_chart.columns:
-            df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
-
-        numeric_cols_chart = df_chart.select_dtypes(include=['float64', 'int64']).columns
-        categorical_cols_chart = df_chart.select_dtypes(include=['object']).columns
         
         # Format percentage columns
         percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
@@ -133,27 +128,107 @@ if question:
         if show_chart:
 
             import plotly.express as px
+            import plotly.graph_objects as go
 
-            # Automatically detect numeric columns
-            numeric_cols_chart = df_chart.select_dtypes(include=['float64', 'int64']).columns
-            categorical_cols_chart = df_chart.select_dtypes(include=['object']).columns
+            # Convert numeric columns
+            for col in df_chart.columns:
+                df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
 
-            if len(numeric_cols_chart) >= 1:
+            numeric_cols = df_chart.select_dtypes(include=['float64', 'int64']).columns
+            categorical_cols = df_chart.select_dtypes(include=['object']).columns
 
-                y_col = numeric_cols_chart[0]
+            # Detect columns
+            sales_col = None
+            budget_col = None
+            for col in df_chart.columns:
+                if "sales" in col.lower() and "budget" not in col.lower():
+                    sales_col = col
+                if "budget" in col.lower():
+                    budget_col = col
 
-                # If we have a categorical column, use it for X
-                if len(categorical_cols_chart) >= 1:
-                    x_col = categorical_cols_chart[0]
-                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                else:
-                    fig = px.line(df_chart, y=y_col, title=f"{y_col} Trend")
+            if sales_col and budget_col and len(categorical_cols) >= 1:
+                # Create waterfall
+                x_col = categorical_cols[0]
+                
+                df_chart["Variance"] = df_chart[sales_col] - df_chart[budget_col]
+                
+                # Sort time if X-axis is month/quarter/year
+                if any(word in x_col.lower() for word in ["month", "quarter", "year"]):
+                    df_chart = df_chart.sort_values(by=x_col)
+                
+                fig = go.Figure(go.Waterfall(
+                    name = "Variance",
+                    x = df_chart[x_col],
+                    y = df_chart["Variance"],
+                    measure = ["relative"]*len(df_chart),
+                    text = df_chart["Variance"].apply(lambda x: f"${x:,.0f}"),
+                    textposition = "outside"
+                ))
 
-                fig.update_layout(yaxis_tickformat=",")
+                fig.update_layout(
+                    title=f"{sales_col} vs {budget_col} Waterfall",
+                    yaxis_title="USD",
+                    xaxis_title=x_col
+                )
+
                 st.plotly_chart(fig, use_container_width=True)
 
             else:
-                st.info("No numeric data available to visualize.")
+                # fallback to previous chart logic
+                if len(numeric_cols) >= 1 and len(categorical_cols) >= 1:
+                    x_col = categorical_cols[0]
+                    # Sort dataframe first so charts appear chronologically
+                    if any(word in x_col.lower() for word in ["month", "quarter", "year", "date"]):
+                        df_chart = df_chart.sort_values(by=x_col)
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    
+                    y_col = numeric_cols[0]
+                    x_lower = x_col.lower()
+                    y_lower = y_col.lower()
+
+                    if any(word in x_lower for word in ["month", "year", "quarter", "date"]):
+                        fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    elif any(word in y_lower for word in ["percent", "share", "mix"]):
+                        fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                    else:
+                        fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+
+                    # Y-Axis formating
+                    fig.update_yaxes(tickprefix="$", tickformat=",")
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No numeric data available to visualize.")
+
+
+
+
+Sort by time for time-based waterfall:
+
+if any(word in x_col.lower() for word in ["month", "quarter", "year"]):
+    df_chart = df_chart.sort_values(by=x_col)
+
+Optional: cumulative waterfall using measure=["relative", ..., "total"] if you want actual cumulative totals.
+
+Now, your app can intelligently do:
+
+Query Type	Chart
+Revenue by Month	Line
+% of Sales by Franchise	Pie / Donut
+Revenue by Country	Bar
+Sales vs Budget / Variance	Waterfall
+
+If you want, I can integrate this waterfall logic into your existing app.py fully, keeping:
+
+Table formatting
+
+Explanation from GPT
+
+Toggle charts
+
+so you’ll have a complete finance conversational BI MVP in Streamlit.
+
+Do you want me to do that next?
 
         # Ask OpenAI to explain results
         explanation_prompt = f"""
