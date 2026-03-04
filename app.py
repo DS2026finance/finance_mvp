@@ -72,6 +72,7 @@ Interpretation Rules:
 - Treat common country abbreviations as equivalent (e.g., US = USA, UK = United Kingdom if present).
 - If the question is ambiguous, make a reasonable assumption and generate the most likely SQL.
 - Brand A should be treated as one word. Same as Franchise A.
+- Revenue variance means comparing Sales and Budget in USD
 
 Output Rules:
 - Output SQL only.
@@ -144,6 +145,9 @@ if question:
             sales_col = next((col for col in df_chart.columns if "sales" in col.lower() and "budget" not in col.lower()), None)
             budget_col = next((col for col in df_chart.columns if "budget" in col.lower()), None)
 
+            # Use first categorical column as X if needed
+            categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
+            
             if sales_col and budget_col and len(categorical_cols) >= 1:
                 # Create waterfall
                 x_col = categorical_cols[0]
@@ -162,37 +166,35 @@ if question:
                     textposition = "outside"
                 ))
 
-                fig.update_layout(
-                    title=f"{sales_col} vs {budget_col} Waterfall",
-                    yaxis_title="USD",
-                    xaxis_title=x_col
-                )
-
+                fig.update_layout(title=f"{sales_col} vs {budget_col} Waterfall", yaxis_title="USD", xaxis_title=x_col)
                 st.plotly_chart(fig, use_container_width=True)
 
-            elif len(numeric_cols) >= 1:
-                time_cols_for_chart = [col for col in df_chart.columns if any(word in col.lower() for word in ["month","quarter","year","date"])]
-                if time_cols_for_chart:
-                    x_col = time_cols_for_chart[0]
-                    y_col_candidates = [col for col in numeric_cols if col != x_col]
-                    y_col = y_col_candidates[0] if y_col_candidates else numeric_cols[0]
-                    df_chart = df_chart.sort_values(by=x_col)
-                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+            elif len(df_chart.select_dtypes(include=['float64','int64']).columns) >= 1:
+                numeric_cols = df_chart.select_dtypes(include=['float64','int64']).columns.tolist()
+
+                # Handle Year + Quarter combined X-axis
+                if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
+                    df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
+                    x_col = 'Year_Quarter'
+                    df_chart = df_chart.sort_values(by=['Year', 'Quarter'])
                 else:
-                    # Non-time data: use first categorical/numeric
-                    x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
-                    y_col = numeric_cols[0]
-                    # Pie for percentages, else bar
-                    y_lower = y_col.lower()
-                    if any(word in y_lower for word in ["percent", "share", "mix"]):
-                        fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                    else:
-                        fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                    time_cols_for_chart = [col for col in df_chart.columns if any(word in col.lower() for word in ["month","quarter","year","date"])]
+                    x_col = time_cols_for_chart[0] if time_cols_for_chart else df_chart.columns[0]
 
-                # Y-Axis formating
-                fig.update_yaxes(tickprefix="$", tickformat=",")
-                    
+                # Pick Y column (exclude Year/Quarter)
+                y_col_candidates = [col for col in numeric_cols if col not in ['Year','Quarter']]
+                y_col = y_col_candidates[0] if y_col_candidates else numeric_cols[0]
+
+                # Decide chart type
+                y_lower = y_col.lower()
+                if any(word in y_lower for word in ["percent", "share", "mix"]):
+                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                else:
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    fig.update_yaxes(tickformat=",")  # thousand separators
+
                 st.plotly_chart(fig, use_container_width=True)
+
             else:
                 st.info("No numeric data available to visualize.")
 
