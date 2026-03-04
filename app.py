@@ -172,29 +172,29 @@ if question:
 
             elif len(numeric_cols) >= 1:
                 time_cols_for_chart = [col for col in df_chart.columns if any(word in col.lower() for word in ["month","quarter","year","date"])]
-                    if time_cols_for_chart:
-                        x_col = time_cols_for_chart[0]
-                        y_col_candidates = [col for col in numeric_cols if col != x_col]
-                        y_col = y_col_candidates[0] if y_col_candidates else numeric_cols[0]
-                        df_chart = df_chart.sort_values(by=x_col)
-                        fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                    else:
-                        # Non-time data: use first categorical/numeric
-                        x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
-                        y_col = numeric_cols[0]
-                        # Pie for percentages, else bar
-                        y_lower = y_col.lower()
-                        if any(word in y_lower for word in ["percent", "share", "mix"]):
-                            fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                        else:
-                            fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-
-                    # Y-Axis formating
-                    fig.update_yaxes(tickprefix="$", tickformat=",")
-                    
-                    st.plotly_chart(fig, use_container_width=True)
+                if time_cols_for_chart:
+                    x_col = time_cols_for_chart[0]
+                    y_col_candidates = [col for col in numeric_cols if col != x_col]
+                    y_col = y_col_candidates[0] if y_col_candidates else numeric_cols[0]
+                    df_chart = df_chart.sort_values(by=x_col)
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
                 else:
-                    st.info("No numeric data available to visualize.")
+                    # Non-time data: use first categorical/numeric
+                    x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
+                    y_col = numeric_cols[0]
+                    # Pie for percentages, else bar
+                    y_lower = y_col.lower()
+                    if any(word in y_lower for word in ["percent", "share", "mix"]):
+                        fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                    else:
+                        fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+
+                # Y-Axis formating
+                fig.update_yaxes(tickprefix="$", tickformat=",")
+                    
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No numeric data available to visualize.")
 
         # Ask OpenAI to explain results
         explanation_prompt = f"""
