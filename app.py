@@ -67,11 +67,11 @@ Percentage & Growth Logic:
 Formatting Rules:
 - Use clear column aliases (e.g., Total_Sales_USD, Percentage).
 - Return one result table only.
-- Use thousand separator
 
 Interpretation Rules:
 - Treat common country abbreviations as equivalent (e.g., US = USA, UK = United Kingdom if present).
 - If the question is ambiguous, make a reasonable assumption and generate the most likely SQL.
+- Brand A should be treated as one word. Same as Franchise A.
 
 Output Rules:
 - Output SQL only.
@@ -177,21 +177,20 @@ if question:
                 # fallback to previous chart logic
                 if len(numeric_cols) >= 1 and len(categorical_cols) >= 1:
                     x_col = categorical_cols[0]
+                    y_col = numeric_cols[0]
+
                     # Sort dataframe first so charts appear chronologically
                     if any(word in x_col.lower() for word in ["month", "quarter", "year", "date"]):
                         df_chart = df_chart.sort_values(by=x_col)
                     fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                    
-                    y_col = numeric_cols[0]
-                    x_lower = x_col.lower()
-                    y_lower = y_col.lower()
 
-                    if any(word in x_lower for word in ["month", "year", "quarter", "date"]):
-                        fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
                     elif any(word in y_lower for word in ["percent", "share", "mix"]):
                         fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
                     else:
                         fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+
+                    x_lower = x_col.lower()
+                    y_lower = y_col.lower()
 
                     # Y-Axis formating
                     fig.update_yaxes(tickprefix="$", tickformat=",")
@@ -199,6 +198,7 @@ if question:
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("No numeric data available to visualize.")
+
 
 
         # Ask OpenAI to explain results
