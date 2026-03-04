@@ -90,7 +90,7 @@ if question:
 
     response = client.chat.completions.create(
         model="gpt-4.1-mini",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role":"user","content":prompt}]
     )
 
     sql_query = response.choices[0].message.content.strip()
@@ -131,10 +131,11 @@ if question:
     show_chart = st.toggle("Show Chart")
 
     if show_chart:
+        # Ensure numeric columns for plotting
         for col in df_chart.columns:
             df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
 
-        # X-axis: handle Year + Quarter
+        # Determine X-axis
         if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
             df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
             x_col = 'Year_Quarter'
@@ -146,16 +147,15 @@ if question:
             categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
             x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
 
-        # Waterfall logic for Sales vs Budget
+        # --- Waterfall for Sales vs Budget ---
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
-            x_labels = df_chart[x_col].tolist()
 
-            # Build waterfall values
+            x_labels = df_chart[x_col].tolist()
             y_values = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [df_chart['Sales_USD'].sum()]
-            measures = ["absolute"] + ["relative"] * len(df_chart) + ["total"]
+            measures = ['absolute'] + ['relative']*len(df_chart) + ['total']
             texts = [f"${df_chart['Budget_USD'].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart['Sales_USD'].sum():,.0f}"]
-            x_waterfall = ["Budget"] + x_labels + ["Total Sales"]
+            x_waterfall = ['Budget'] + x_labels + ['Total Sales']
 
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
@@ -166,27 +166,24 @@ if question:
             ))
             fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
             st.plotly_chart(fig, use_container_width=True)
-
-            # STOP here! Do not run line/bar/pie below
-            st.stop()
-
-        # Pie for percentage/mix
-        y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
-        if not y_candidates:
-            st.info("No numeric data to plot.")
         else:
-            y_col = y_candidates[0]
-            if any(k in y_col.lower() for k in ['percent','share','mix']):
-                fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-            elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
-                fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                fig.update_yaxes(tickformat=",")
+            # --- Pie / Line / Bar ---
+            y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
+            if not y_candidates:
+                st.info("No numeric data to plot.")
             else:
-                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                fig.update_yaxes(tickformat=",")
+                y_col = y_candidates[0]
+                if any(k in y_col.lower() for k in ['percent','share','mix']):
+                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    fig.update_yaxes(tickformat=",")
+                else:
+                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                    fig.update_yaxes(tickformat=",")
+                st.plotly_chart(fig, use_container_width=True)
 
-            st.plotly_chart(fig, use_container_width=True)
-    # Ask OpenAI for plain language explanation
+    # Explain result
     explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
     explanation = client.chat.completions.create(
         model="gpt-4.1-mini",
