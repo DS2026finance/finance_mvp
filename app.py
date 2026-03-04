@@ -138,8 +138,12 @@ if question:
             df_chart['X_Label'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
         elif 'Year' in df_chart.columns and 'Month' in df_chart.columns:
             df_chart['X_Label'] = df_chart['Year'].astype(str) + '-' + df_chart['Month'].astype(str).str.zfill(2)
+        elif 'Quarter' in df_chart.columns:
+            # Only Quarter available, prepend placeholder year or leave just Q
+            df_chart['X_Label'] = 'Q' + df_chart['Quarter'].astype(str)
+        elif 'Month' in df_chart.columns:
+            df_chart['X_Label'] = df_chart['Month'].astype(str).str.zfill(2)
         else:
-            # Use first categorical column if available
             categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
             df_chart['X_Label'] = df_chart[categorical_cols[0]] if categorical_cols else df_chart.columns[0]
 
