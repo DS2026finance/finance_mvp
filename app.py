@@ -146,7 +146,7 @@ if question:
             df_chart['X_Label'] = df_chart[categorical_cols[0]] if categorical_cols else df_chart.index.astype(str)
 
         # --- WATERFALL for Sales vs Budget ---
-        if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
+        if 'Total_Sales_USD' in df_chart.columns and 'Total_Budget_USD' in df_chart.columns:
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
 
             x_waterfall = ['Budget'] + df_chart['X_Label'].tolist() + ['Total Sales']
