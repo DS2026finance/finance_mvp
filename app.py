@@ -146,72 +146,52 @@ if question:
         for col in df_chart.columns:
             df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
 
-        # Detect columns
-        sales_col = next((col for col in df_chart.columns if "sales" in col.lower() and "budget" not in col.lower()), None)
-        budget_col = next((col for col in df_chart.columns if "budget" in col.lower()), None)
-
-        # Use first categorical column as X if needed
-        categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
         numeric_cols_chart = df_chart.select_dtypes(include=['float64','int64']).columns.tolist()
+        categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
         time_cols_chart = [c for c in numeric_cols_chart if any(word in c.lower() for word in ["year","quarter","month","date"])]
-            
-        if sales_col and budget_col:
-            # Determine X-axis (prefer categorical)
-            if categorical_cols:
-                x_col = categorical_cols[0]
-            elif time_cols_chart:
-                x_col = time_cols_chart[0]
-            else:
-                x_col = df_chart.columns[0]
-                
-            df_chart["Variance"] = df_chart[sales_col] - df_chart[budget_col]
-                
-            # Sort by Year & Quarter if present
-            sort_cols = [col for col in ["Year","Quarter"] if col in df_chart.columns]
-            if sort_cols:
-                df_chart = df_chart.sort_values(by=sort_cols)
-                
-            fig = go.Figure(go.Waterfall(
-                name = "Variance",
-                x = df_chart[x_col],
-                y = df_chart["Variance"],
-                measure = ["relative"]*len(df_chart),
-                text = df_chart["Variance"].apply(lambda x: f"${x:,.0f}"),
-                textposition = "outside"
-            ))
 
-            fig.update_layout(title=f"{sales_col} vs {budget_col} Waterfall", yaxis_title="USD", xaxis_title=x_col)
-            st.plotly_chart(fig, use_container_width=True)
+        # Handle Year + Quarter combined
+        if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
+            df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
+            x_col = 'Year_Quarter'
+            df_chart = df_chart.sort_values(by=['Year','Quarter'])
+        else:
+            x_col = time_cols_chart[0] if time_cols_chart else (categorical_cols[0] if categorical_cols else df_chart.columns[0])
 
-        elif numeric_cols_chart:
-            # Handle Year + Quarter combined X-axis
-            if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
-                df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
-                x_col = 'Year_Quarter'
-                df_chart = df_chart.sort_values(by=['Year', 'Quarter'])
-            elif time_cols_chart:
-                x_col = time_cols_chart[0]
-                df_chart = df_chart.sort_values(by=x_col)
-            else:
-                x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
+        # Pick Y column (exclude Year/Quarter)
+        y_col_candidates = [col for col in numeric_cols_chart if col not in ['Year','Quarter']]
+        y_col = y_col_candidates[0] if y_col_candidates else None
 
-            # Pick Y column (exclude Year/Quarter)
-            y_col_candidates = [col for col in numeric_cols if col not in ['Year','Quarter']]
-            if not y_candidates:
-                st.info("No numeric data available to visualize.")
-
-                if any(word in y_lower for word in ["percent", "share", "mix"]):
-                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                elif x_col in df_chart.columns and any(word in x_col.lower() for word in ["year","quarter","month","date"]):
-                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                else:
-                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                    
+        if not y_col:
+            st.info("No numeric data available to visualize.")
+        else:
+            # Detect Sales vs Budget for waterfall
+            if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
+                df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
+                fig = go.Figure(go.Waterfall(
+                    name='Variance',
+                    x=df_chart[x_col],
+                    y=df_chart['Variance'],
+                    measure=['relative']*len(df_chart),
+                    text=df_chart['Variance'].apply(lambda x: f"${x:,.0f}"),
+                    textposition='outside'
+                ))
+                fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD", xaxis_title=x_col)
+                st.plotly_chart(fig, use_container_width=True)
+            # Pie chart for percentages
+            elif any(word in y_col.lower() for word in ["percent","share","mix"]):
+                fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                st.plotly_chart(fig, use_container_width=True)
+            # Line chart for time-series
+            elif any(word in x_col.lower() for word in ["year","quarter","month","date"]):
+                fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
                 fig.update_yaxes(tickformat=",")
                 st.plotly_chart(fig, use_container_width=True)
-
-        else:
-            st.info("No numeric data available to visualize.")
+            # Bar chart for other categorical-numeric
+            else:
+                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                fig.update_yaxes(tickformat=",")
+                st.plotly_chart(fig, use_container_width=True)
 
         # Ask OpenAI to explain results
         explanation_prompt = f"""
