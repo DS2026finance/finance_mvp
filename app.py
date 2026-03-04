@@ -88,29 +88,24 @@ Question:
 if question:
     prompt = build_prompt(question)
 
-    # Ask OpenAI to generate SQL
     response = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=[{"role": "user", "content": prompt}]
     )
 
     sql_query = response.choices[0].message.content.strip()
-
     st.subheader("Generated SQL")
     st.code(sql_query)
 
-    # If the model returns "I don't understand", handle gracefully
     if "I don't understand" in sql_query:
         st.info(sql_query)
         st.stop()
 
-    # Simple safety check
-    forbidden = ["drop", "delete", "update", "insert"]
+    forbidden = ["drop","delete","update","insert"]
     if not sql_query.lower().startswith("select") or any(word in sql_query.lower() for word in forbidden):
         st.error("Unsafe or invalid SQL generated. Please rephrase your question.")
         st.stop()
 
-    # Execute SQL safely
     try:
         df = pd.read_sql_query(sql_query, conn)
     except:
@@ -120,39 +115,26 @@ if question:
     if df.empty:
         st.info("Query returned no data.")
         st.stop()
-        
-    df_chart = df.copy()
-        
-    # Format numeric columns (thousand separator), excluding Year/Quarter/Month
-    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-    time_cols = [col for col in numeric_cols if any(word in col.lower() for word in ["year","quarter","month","date"])]
-    format_cols = [col for col in numeric_cols if col not in time_cols]
 
+    df_chart = df.copy()
+
+    # Format numeric columns
+    numeric_cols = df.select_dtypes(include=['float64','int64']).columns.tolist()
+    time_cols = [c for c in numeric_cols if any(w in c.lower() for w in ['year','quarter','month','date'])]
+    format_cols = [c for c in numeric_cols if c not in time_cols]
     for col in format_cols:
         df[col] = df[col].apply(lambda x: f"{x:,.0f}" if pd.notnull(x) else "")
-        
-    # Format percentage columns
-    percentage_cols = [col for col in df.columns if "percent" in col.lower() or "growth" in col.lower()]
-    for col in percentage_cols:
-        df[col] = pd.to_numeric(df[col], errors='coerce') # convert to numeric
-        df[col] = df[col].map(lambda x: f"{x:.2f}%" if pd.notnull(x) else "")
-        
+
     st.dataframe(df)
 
     st.subheader("📈 Visualization")
-
     show_chart = st.toggle("Show Chart")
 
     if show_chart:
-
-        # Convert numeric columns
         for col in df_chart.columns:
             df_chart[col] = pd.to_numeric(df_chart[col], errors='ignore')
 
-        numeric_cols_chart = df_chart.select_dtypes(include=['float64','int64']).columns.tolist()
-        categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
-
-        # Handle Year + Quarter combined
+        # X-axis: handle Year + Quarter
         if 'Year' in df_chart.columns and 'Quarter' in df_chart.columns:
             df_chart['Year_Quarter'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
             x_col = 'Year_Quarter'
@@ -160,56 +142,69 @@ if question:
         elif time_cols:
             x_col = time_cols[0]
             df_chart = df_chart.sort_values(by=x_col)
-        elif categorical_cols:
-            x_col = categorical_cols[0]
         else:
-            x_col = df_chart.columns[0]
+            categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
+            x_col = categorical_cols[0] if categorical_cols else df_chart.columns[0]
 
-        # Pick Y column (exclude Year/Quarter)
-        y_col_candidates = [col for col in numeric_cols_chart if col not in ['Year','Quarter']]
-        if not y_candidates:
-            st.info("No numeric data available to visualize.")
+        # Waterfall logic for Sales vs Budget
+        if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
+            measures = []
+            y_values = []
+            text = []
+
+            # Start with Budget
+            y_values.append(df_chart['Budget_USD'].sum())
+            measures.append("absolute")
+            text.append(f"${df_chart['Budget_USD'].sum():,.0f}")
+
+            # Add differences per row
+            for idx, row in df_chart.iterrows():
+                diff = row['Sales_USD'] - row['Budget_USD']
+                y_values.append(diff)
+                measures.append("relative")
+                text.append(f"${diff:,.0f}")
+
+            # Total Sales at end
+            total_sales = df_chart['Sales_USD'].sum()
+            y_values.append(total_sales)
+            measures.append("total")
+            text.append(f"${total_sales:,.0f}")
+
+            x_waterfall = ["Budget"] + df_chart[x_col].tolist() + ["Total Sales"]
+
+            fig = go.Figure(go.Waterfall(
+                x=x_waterfall,
+                y=y_values,
+                measure=measures,
+                text=text,
+                textposition="outside"
+            ))
+
+            fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
+            st.plotly_chart(fig, use_container_width=True)
+
         else:
-            y_col = y_candidates[0]
-
-            # --- Waterfall if Sales vs Budget present ---
-            if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
-                df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
-                fig = go.Figure(go.Waterfall(
-                    name='Variance',
-                    x=df_chart[x_col],
-                    y=df_chart['Variance'],
-                    measure=['relative']*len(df_chart),
-                    text=df_chart['Variance'].apply(lambda x: f"${x:,.0f}"),
-                    textposition='outside'
-                ))
-                fig.update_layout(title='Sales vs Budget Waterfall', yaxis_title='USD', xaxis_title=x_col)
-                st.plotly_chart(fig, use_container_width=True)
-
-            # --- Pie chart for percentages ---
-            elif any(word in y_col.lower() for word in ['percent','share','mix']):
-                fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                st.plotly_chart(fig, use_container_width=True)
-
-            # --- Line chart for time series ---
-            elif any(word in x_col.lower() for word in ['year','quarter','month','date']):
-                fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                fig.update_yaxes(tickformat=",")
-                st.plotly_chart(fig, use_container_width=True)
-
-            # --- Bar chart for categorical comparisons ---
+            # Pie for percentage/mix
+            y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
+            if not y_candidates:
+                st.info("No numeric data to plot.")
             else:
-                fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                fig.update_yaxes(tickformat=",")
+                y_col = y_candidates[0]
+                if any(word in y_col.lower() for word in ['percent','share','mix']):
+                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
+                elif any(word in x_col.lower() for word in ['year','quarter','month','date']):
+                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
+                    fig.update_yaxes(tickformat=",")
+                else:
+                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
+                    fig.update_yaxes(tickformat=",")
+
                 st.plotly_chart(fig, use_container_width=True)
-    # Ask OpenAI to explain results
-    explanation_prompt = f"Explain this result in plain business language:\n{df.to_string(index=False)}"
+    # Ask OpenAI for plain language explanation
+    explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
     explanation = client.chat.completions.create(
         model="gpt-4.1-mini",
-        messages=[{"role":"user","content":explanation_prompt}]
+        messages=[{"role": "user", "content": explanation_prompt}]
     )
-
-    st.subheader("Explanation")
-    st.write(explanation.choices[0].message.content)
     st.subheader("Explanation")
     st.write(explanation.choices[0].message.content)
