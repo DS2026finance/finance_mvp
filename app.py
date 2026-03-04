@@ -154,10 +154,10 @@ if question:
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
             x_labels = df_chart[x_col].tolist()
 
-            y_values = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [df_chart['Sales_USD'].sum()]
+            x_waterfall = ['Budget'] + df_chart['X_Label'].tolist() + ['Total Sales']
+            y_waterfall = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [0]  # last 0, Plotly will calculate total
             measures = ['absolute'] + ['relative']*len(df_chart) + ['total']
             texts = [f"${df_chart['Budget_USD'].sum():,.0f}"] + [f"${v:,.0f}" for v in df_chart['Variance']] + [f"${df_chart['Sales_USD'].sum():,.0f}"]
-            x_waterfall = ['Budget'] + x_labels + ['Total Sales']
 
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
