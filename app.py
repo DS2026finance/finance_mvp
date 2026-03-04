@@ -175,23 +175,34 @@ if question:
             st.plotly_chart(fig, use_container_width=True)
 
         # --- OTHER CHARTS ---
-        else:
-            y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter']]
-            if not y_candidates:
-                st.info("No numeric data to plot.")
+        y_candidates = [c for c in numeric_cols if c not in ['Year','Quarter','Month']]
+        if y_candidates:
+            y_col = y_candidates[0]
+
+            # Convert x-axis to string if needed
+            x_col = str(x_col) if not isinstance(x_col, str) else x_col
+
+            # Time-based X-axis formatting
+            if 'Month' in df_chart.columns:
+                df_chart['X_Label'] = pd.to_datetime(df_chart['Month'], format='%m').dt.strftime('%Y-%m') if 'Year' in df_chart.columns else df_chart['Month'].astype(str).str.zfill(2)
+                x_col_plot = 'X_Label'
+            elif 'Quarter' in df_chart.columns and 'Year' in df_chart.columns:
+                df_chart['X_Label'] = df_chart['Year'].astype(str) + '-Q' + df_chart['Quarter'].astype(str)
+                x_col_plot = 'X_Label'
             else:
-                y_col = y_candidates[0]
-                if any(k in y_col.lower() for k in ['percent','share','mix']):
-                    fig = px.pie(df_chart, names=x_col, values=y_col, hole=0.4, title=f"{y_col} by {x_col}")
-                elif any(k in x_col.lower() for k in ['year','quarter','month','date']):
-                    fig = px.line(df_chart, x=x_col, y=y_col, markers=True, title=f"{y_col} over {x_col}")
-                    fig.update_yaxes(tickformat=",")
-                else:
-                    fig = px.bar(df_chart, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                    fig.update_yaxes(tickformat=",")
+                x_col_plot = x_col  # fallback to category
 
-                st.plotly_chart(fig, use_container_width=True)
+            # Decide chart type
+            if any(word in y_col.lower() for word in ['percent','share','mix']):
+                fig = px.pie(df_chart, names=x_col_plot, values=y_col, hole=0.4, title=f"{y_col} by {x_col_plot}")
+            elif any(word in x_col_plot.lower() for word in ['year','quarter','month','date']):
+                fig = px.line(df_chart, x=x_col_plot, y=y_col, markers=True, title=f"{y_col} over {x_col_plot}")
+                fig.update_yaxes(tickformat=",")
+            else:
+                fig = px.bar(df_chart, x=x_col_plot, y=y_col, title=f"{y_col} by {x_col_plot}")
+                fig.update_yaxes(tickformat=",")
 
+            st.plotly_chart(fig, use_container_width=True)
     # Explain result
     explanation_prompt = f"Explain this result in plain business language:\n\n{df.to_string(index=False)}"
     explanation = client.chat.completions.create(
