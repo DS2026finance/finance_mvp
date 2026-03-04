@@ -141,18 +141,11 @@ if question:
             df_chart['X_Label'] = pd.to_datetime(df_chart['Month']).dt.strftime('%Y-%m')
             df_chart = df_chart.sort_values(by='Month')
         else:
-            categorical_cols = df_chart.select_dtypes(include=['object']).columns.tolist()
-            df_chart['X_Label'] = df_chart[categorical_cols[0]] if categorical_cols else df_chart.index.astype(str)
-
-
-        # Ensure it's string
-        df_chart['X_Label'] = df_chart['X_Label'].astype(str)
-        x_col = 'X_Label'
+            df_chart['X_Label'] = df_chart.index.astype(str)
 
         # --- WATERFALL for Sales vs Budget ---
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
             df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
-            x_labels = df_chart[x_col].tolist()
 
             x_waterfall = ['Budget'] + df_chart['X_Label'].tolist() + ['Total Sales']
             y_waterfall = [df_chart['Budget_USD'].sum()] + df_chart['Variance'].tolist() + [0]  # last 0, Plotly will calculate total
