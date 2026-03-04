@@ -194,7 +194,7 @@ if question:
             if any(c in df_chart.columns for c in ['Year', 'Month', 'Quarter']):
                 # Treat as time series → line chart
                 fig = px.line(df_chart, x=x_col_plot, y=y_col, markers=True, title=f"{y_col} over {x_col_plot}")
-                ig.update_yaxes(tickformat=",")
+                fig.update_yaxes(tickformat=",")
             elif any(word in y_col.lower() for word in ['percent','share','mix']):
                 fig = px.pie(df_chart, names=x_col_plot, values=y_col, hole=0.4, title=f"{y_col} by {x_col_plot}")
             else:
