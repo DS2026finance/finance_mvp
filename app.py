@@ -148,38 +148,45 @@ if question:
 
         # Waterfall logic for Sales vs Budget
         if 'Sales_USD' in df_chart.columns and 'Budget_USD' in df_chart.columns:
-            measures = []
+            # Compute Variance per row
+            df_chart['Variance'] = df_chart['Sales_USD'] - df_chart['Budget_USD']
+    
+            # X-axis labels = categorical/time column values
+            x_labels = df_chart[x_col].tolist()
+    
+            # Prepare waterfall y values and measure
             y_values = []
-            text = []
+            measures = []
+            texts = []
 
-            # Start with Budget
-            y_values.append(df_chart['Budget_USD'].sum())
+            # Start with Budget total
+            total_budget = df_chart['Budget_USD'].sum()
+            y_values.append(total_budget)
             measures.append("absolute")
-            text.append(f"${df_chart['Budget_USD'].sum():,.0f}")
+            texts.append(f"${total_budget:,.0f}")
 
-            # Add differences per row
-            for idx, row in df_chart.iterrows():
-                diff = row['Sales_USD'] - row['Budget_USD']
-                y_values.append(diff)
+            # Add each variance as relative
+            for var in df_chart['Variance']:
+                y_values.append(var)
                 measures.append("relative")
-                text.append(f"${diff:,.0f}")
+                texts.append(f"${var:,.0f}")
 
-            # Total Sales at end
+            # Add total Sales at the end
             total_sales = df_chart['Sales_USD'].sum()
             y_values.append(total_sales)
             measures.append("total")
-            text.append(f"${total_sales:,.0f}")
+            texts.append(f"${total_sales:,.0f}")
 
-            x_waterfall = ["Budget"] + df_chart[x_col].tolist() + ["Total Sales"]
+            # X labels for waterfall
+            x_waterfall = ["Budget"] + x_labels + ["Total Sales"]
 
             fig = go.Figure(go.Waterfall(
                 x=x_waterfall,
                 y=y_values,
                 measure=measures,
-                text=text,
+                text=texts,
                 textposition="outside"
             ))
-
             fig.update_layout(title="Sales vs Budget Waterfall", yaxis_title="USD")
             st.plotly_chart(fig, use_container_width=True)
 
