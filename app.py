@@ -175,7 +175,7 @@ if question:
             st.plotly_chart(fig, use_container_width=True)
 
         # --- OTHER CHARTS ---
-        else：
+        else:
             y_candidates = [c for c in df_chart.select_dtypes(include=['float64','int64']).columns if c not in ['Year','Quarter','Month']]
             if y_candidates:
                 y_col = y_candidates[0]
